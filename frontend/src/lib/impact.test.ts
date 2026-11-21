@@ -1,115 +1,153 @@
+import { execSync } from "child_process";
 import { seedFacts } from "../data/facts";
 import { seedSubmissions } from "../data/submissions";
 import {
   findFactImpacts,
   formatImpactReport,
 } from "./impact";
-import { findChangedFacts, parseGitDiff } from "./gitImpact";
-const sampleDiff = `
-diff --git a/config/billing.json b/config/billing.json
---- a/config/billing.json
-+++ b/config/billing.json
-@@ -42,3 +42,3 @@
-     "pro": {
--      "seats": 25,
-+      "seats": 30,
-       "price_usd_month": 49
-`;
+import {
+  findChangedFacts,
+  parseGitDiff,
+} from "./gitImpact";
 
-const parsedChangedFiles = parseGitDiff(sampleDiff);
+function getBaseFacts() {
+  const baseFactsSource = execSync(
+    "git show origin/main:frontend/src/data/facts.ts",
+    { encoding: "utf-8" },
+  );
+
+  const match = baseFactsSource.match(
+    /id: "F-1006", name: "Seats on Pro plan", value: "([^"]+)"/,
+  );
+
+  if (!match) {
+    throw new Error("Could not find F-1006 in origin/main");
+  }
+
+  return seedFacts.map((fact) =>
+    fact.id === "F-1006"
+      ? {
+          ...fact,
+          value: match[1],
+        }
+      : fact,
+  );
+}
 
 console.log("\n=== Parsed Git Diff ===\n");
 
-console.log(parsedChangedFiles);
-
-const gitDetectedFacts = findChangedFacts(
-  seedFacts,
-  parsedChangedFiles,
+const diff = execSync(
+  "git diff origin/main...HEAD -- frontend/src/data/facts.ts config/billing.json",
+  { encoding: "utf-8" },
 );
+
+const changedFiles = parseGitDiff(diff);
+
+console.log(changedFiles);
 
 console.log("\n=== Facts Detected From Git Diff ===\n");
 
-for (const change of gitDetectedFacts) {
-  console.log(
-    `${change.factId} — ${change.factName}`,
-  );
-  console.log(
-    `${change.file}:${change.line}`,
-  );
-}
-const changedFiles = [
-  {
-    file: "config/billing.json",
-    lines: [42, 43, 44],
-  },
-];
-
-const detectedChanges = findChangedFacts(
+const changedFacts = findChangedFacts(
   seedFacts,
   changedFiles,
 );
 
+for (const fact of changedFacts) {
+  console.log(
+    `${fact.factId} — ${fact.factName}`,
+  );
+  console.log(
+    `${fact.file}:${fact.line}`,
+  );
+}
+
+if (changedFacts.length === 0) {
+  throw new Error("No changed facts detected");
+}
+
 console.log("\n=== Changed Facts ===\n");
 
-for (const change of detectedChanges) {
+for (const fact of changedFacts) {
   console.log(
-    `${change.factId} — ${change.factName}`,
+    `${fact.factId} — ${fact.factName}`,
   );
-
   console.log(
-    `${change.file}:${change.line}`,
+    `${fact.file}:${fact.line}`,
   );
-
-  console.log(change.reason);
+  console.log(fact.reason);
 }
-const changedFacts = seedFacts.map((fact) =>
-  fact.id === "F-1006"
-    ? {
-        ...fact,
-        value: "30",
-      }
-    : fact,
+
+const baseFacts = getBaseFacts();
+
+console.log("\n=== Base → Current Fact Values ===\n");
+
+const currentF1006 = seedFacts.find(
+  (fact) => fact.id === "F-1006",
+);
+
+const baseF1006 = baseFacts.find(
+  (fact) => fact.id === "F-1006",
+);
+
+if (!baseF1006 || !currentF1006) {
+  throw new Error("F-1006 was not found");
+}
+
+console.log(
+  `F-1006 — ${baseF1006.value} → ${currentF1006.value}`,
 );
 
 const impacts = findFactImpacts(
+  baseFacts,
   seedFacts,
-  changedFacts,
   seedSubmissions,
 );
+
+console.log("\n");
+
 console.log(formatImpactReport(impacts));
-console.log("\n=== CodeTruth Fact Impact Test ===\n");
 
 if (impacts.length === 0) {
-  console.log("❌ No impacts detected");
-  process.exit(1);
+  throw new Error("No impacts detected");
 }
 
-for (const impact of impacts) {
-  console.log(`Fact: ${impact.factId} — ${impact.factName}`);
-  console.log(`${impact.oldValue} → ${impact.newValue}`);
-
-  for (const submission of impact.affectedSubmissions) {
-    console.log(
-      `Affected submission: ${submission.submissionId} — ${submission.title}`,
-    );
-
-    console.log(`Claims: ${submission.claims.join(", ")}`);
-  }
-
-  console.log("");
-}
-
-const found = impacts.some(
-  (impact) =>
-    impact.factId === "F-1006" &&
-    impact.affectedSubmissions.some(
-      (submission) => submission.submissionId === "S-2035",
-    ),
+const impact = impacts.find(
+  (item) => item.factId === "F-1006",
 );
 
-if (!found) {
-  console.log("❌ Expected S-2035 to be affected");
-  process.exit(1);
+if (!impact) {
+  throw new Error(
+    "Expected F-1006 impact was not detected",
+  );
 }
 
-console.log("✅ Impact detection test passed");
+const affectedSubmission =
+  impact.affectedSubmissions.find(
+    (submission) => submission.submissionId === "S-2035",
+  );
+
+if (!affectedSubmission) {
+  throw new Error(
+    "Expected S-2035 affected submission was not detected",
+  );
+}
+
+console.log("\n=== CodeTruth Fact Impact Test ===\n");
+
+console.log(
+  `Fact: ${impact.factId} — ${impact.factName}`,
+);
+
+console.log(
+  `${impact.oldValue} → ${impact.newValue}`,
+);
+
+console.log(
+  `Affected submission: ${affectedSubmission.submissionId} — ${affectedSubmission.title}`,
+);
+
+console.log(
+  `Claims: ${affectedSubmission.claims.join(", ")}`,
+);
+
+console.log("\n✅ Impact detection test passed");
