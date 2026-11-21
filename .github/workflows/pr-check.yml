@@ -40,7 +40,9 @@ jobs:
         run: npm run build
 
       - name: Run CodeTruth impact detection
-        run: npx tsx src/lib/impact.test.ts
+  env:
+    BASE_SHA: ${{ github.event.pull_request.base.sha }}
+  run: npx tsx src/lib/impact.test.ts
 
       - name: Generate CodeTruth PR comment
         run: npx tsx src/lib/prComment.test.ts > ../codetruth-report.txt

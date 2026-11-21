@@ -12,7 +12,7 @@ import {
 
 function getBaseFacts() {
   const baseFactsSource = execSync(
-    "git show origin/main:frontend/src/data/facts.ts",
+    `git show ${process.env.BASE_SHA}:frontend/src/data/facts.ts`,
     { encoding: "utf-8" },
   );
 
