@@ -1,0 +1,13 @@
+# CodeTruth
+
+> CodeTruth is a brand-governance and product-claim verification platform. It checks marketing content against facts extracted from a company's own product configuration, specifications and documentation, and cites the exact source file and line for every factual finding.
+
+Principle: style checkers read words, CodeTruth reads the product. No source, no flag: a factual finding is only raised when it is backed by an approved product fact.
+
+## Pages
+- [Home](/): Product overview, workflow, features and FAQ
+- [Create an account](/sign-up): Start verifying content
+- [Contact](/contact): Get in touch
+
+## Notes
+- The authenticated application under /app is private and not intended for indexing.
