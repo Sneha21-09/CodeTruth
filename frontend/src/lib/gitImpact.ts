@@ -21,7 +21,10 @@ export function findChangedFacts(
 
   for (const fact of facts) {
     const changedFile = changedFiles.find(
-      (file) => file.file === fact.file,
+      (file) =>
+        file.file === fact.file ||
+        file.file === "src/data/facts.ts" ||
+        file.file === "frontend/src/data/facts.ts",
     );
 
     if (!changedFile) {
@@ -42,7 +45,8 @@ export function findChangedFacts(
       file: fact.file,
       line: fact.line,
       reason:
-        `Source file ${fact.file} changed near line ${fact.line}.`,
+        `Source fact "${fact.name}" changed in ` +
+        `${changedFile.file} near line ${fact.line}.`,
     });
   }
 
@@ -65,9 +69,7 @@ export function parseGitDiff(
     }
 
     if (rawLine.startsWith("@@")) {
-      const match = rawLine.match(
-        /\+(\d+)(?:,(\d+))?/,
-      );
+      const match = rawLine.match(/\+(\d+)(?:,(\d+))?/);
 
       if (!match) {
         continue;

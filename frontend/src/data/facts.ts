@@ -40,7 +40,7 @@ export const seedFacts: Fact[] = [
     history: [{ version: "4.8.1", value: "4.8.1", date: "2026-11-02", note: "Patch release" }],
   },
   {
-    id: "F-1006", name: "Seats on Pro plan", value: "25", unit: "seats", category: "Pricing",
+    id: "F-1006", name: "Seats on Pro plan", value: "30", unit: "seats", category: "Pricing",
     file: "config/billing.json", line: 44, version: "4.8.2", updated: "2026-11-10", status: "approved",
     snippetStart: 41,
     snippet: ["  \"plans\": {", "    \"pro\": {", "      \"seats\": 25,", "      \"price_usd_month\": 49"],
