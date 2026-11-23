@@ -1,6 +1,6 @@
 "use client";
 import {
-  BarChart3, Database, FileCheck2, GitBranch, History, Images, LayoutDashboard, LogOut, Menu, Palette, RotateCcw, Settings, X,
+  BarChart3, Database, FileCheck2, GitBranch, History, MessageCircleQuestion, Images, LayoutDashboard, LogOut, Menu, Palette, RotateCcw, Settings, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,6 +16,7 @@ const nav = [
   { href: "/app/reviews", label: "Content Reviews", icon: FileCheck2 },
   { href: "/app/facts", label: "Product Facts", icon: Database },
   { href: "/app/brand", label: "Brand Guidelines", icon: Palette },
+  { href: "/app/ask", label: "Ask the Guidelines", icon: MessageCircleQuestion },
   { href: "/app/assets", label: "Asset Library", icon: Images },
   { href: "/app/sources", label: "Repository Sources", icon: GitBranch },
   { href: "/app/history", label: "Verification History", icon: History },

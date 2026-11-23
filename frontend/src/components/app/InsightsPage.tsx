@@ -7,7 +7,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/Field";
 import { Tabs } from "@/components/ui/Tabs";
 import { accuracyData, factChangeData, overrideData, ruleViolations, trendData } from "@/data/misc";
-import { useSubmissions } from "@/lib/data";
+import { useReviewVotes, useSubmissions } from "@/lib/data";
+import { calculateRuleInsights } from "@/lib/reviewerInsights";
+import Link from "next/link";
 
 type Tab = "accuracy" | "workflow" | "changes";
 const axis = { tickLine: false, axisLine: false, fontSize: 12, stroke: "#69778f" } as const;
@@ -21,6 +23,8 @@ export function InsightsPage() {
   const [tab, setTab] = useState<Tab>("accuracy");
   const [range, setRange] = useState("6");
   const [subs] = useSubmissions();
+  const [votes] = useReviewVotes();
+  const clarity = useMemo(()=>calculateRuleInsights(votes),[votes]);
   const n = Number(range);
   const last = accuracyData.slice(-n);
   const avg = (k: "precision" | "recall" | "falsePositive") => (last.reduce((a, r) => a + r[k], 0) / last.length).toFixed(1);
@@ -40,9 +44,17 @@ export function InsightsPage() {
       <Card className="mb-4">
         <CardHeader title="Calculated from this workspace" description="Live counts from findings in this browser" />
         <dl className="grid grid-cols-3 divide-x divide-line">
-          {[["Non-verified findings", live.total], ["Suggestions accepted or edited", live.accepted], ["Reviewer overrides (rejected)", live.rejected]].map(([k, v]) => (
+          {[["Non-verified findings", live.total], ["Suggestions accepted or edited", live.accepted], ["Suggestions rejected (not overrides)", live.rejected]].map(([k, v]) => (
             <div key={k as string} className="p-4"><dt className="text-xs text-ink-500">{k}</dt><dd className="mt-1 text-2xl font-semibold tabular-nums text-ink-950">{v}</dd></div>))}
         </dl>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader title="Guideline clarity — real reviewer decisions" description="Override rate = reviewer overrides / (rule upheld + rule overridden). Browser-local recorded decisions; no demo statistics in this table." />
+        {clarity.length === 0 ? <p className="p-5 text-sm text-ink-600">No reviewer decisions yet. Open a content review as a Reviewer or Admin and choose “Rule valid” or “Override rule” on a finding.</p> :
+          <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-surface-muted"><tr><th className="p-3">Rule</th><th className="p-3">Reviewed</th><th className="p-3">Overrides</th><th className="p-3">Override rate</th><th className="p-3">Examples / clarification</th></tr></thead><tbody>
+            {clarity.map(r=><tr key={r.ruleId} className="border-t border-line align-top"><td className="p-3 font-medium">{r.ruleName}</td><td className="p-3">{r.total}</td><td className="p-3">{r.overridden}</td><td className="p-3">{Math.round(r.rate*100)}% {r.total < 3 && <span className="block text-xs text-ink-500">Low sample</span>}</td><td className="p-3">{r.examples.length ? <><p className="mb-2 text-xs">Suggested next step: review this rule's wording with the brand owner; these reviewer explanations may indicate ambiguity.</p>{r.examples.map(e=><div key={e.id} className="mb-2"><Link className="text-brand-700 underline" href={`/app/reviews/${encodeURIComponent(e.submissionId)}`}>Finding {e.findingId}</Link><span className="text-xs text-ink-500"> — {e.reason}</span></div>)}</> : <span className="text-ink-500">No overrides</span>}</td></tr>)}
+          </tbody></table></div>}
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -61,7 +73,7 @@ export function InsightsPage() {
             <div><p className="mb-2 text-sm font-semibold text-ink-950">Content approval trends</p><div className="h-64" role="img" aria-label="Stacked bar chart of submitted and approved content by month"><ResponsiveContainer width="100%" height="100%">
               <BarChart data={trendData.slice(-n)} margin={{ left: -16, right: 8 }}><CartesianGrid stroke="#e3e8ef" vertical={false} /><XAxis dataKey="month" {...axis} /><YAxis {...axis} /><Tooltip cursor={{ fill: "#f6f8fb" }} /><Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="approved" name="Approved" fill="#15803d" radius={[3, 3, 0, 0]} /><Bar dataKey="submitted" name="Submitted" fill="#2f6fe4" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
-            <div><p className="mb-2 text-sm font-semibold text-ink-950">Reviewer overrides</p><div className="h-64" role="img" aria-label="Bar chart of reviewer overrides by month"><ResponsiveContainer width="100%" height="100%">
+            <div><p className="mb-2 text-sm font-semibold text-ink-950">Historical overrides (illustrative)</p><div className="h-64" role="img" aria-label="Bar chart of reviewer overrides by month"><ResponsiveContainer width="100%" height="100%">
               <BarChart data={overrideData.slice(-n)} margin={{ left: -16, right: 8 }}><CartesianGrid stroke="#e3e8ef" vertical={false} /><XAxis dataKey="month" {...axis} /><YAxis allowDecimals={false} {...axis} /><Tooltip cursor={{ fill: "#f6f8fb" }} />
                 <Bar dataKey="overrides" name="Overrides" fill="#b45309" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
             <div className="lg:col-span-2"><p className="mb-2 text-sm font-semibold text-ink-950">Frequently violated rules</p><div className="h-56" role="img" aria-label="Horizontal bar chart of frequently violated rules"><ResponsiveContainer width="100%" height="100%">

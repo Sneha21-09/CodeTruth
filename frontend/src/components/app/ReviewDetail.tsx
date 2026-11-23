@@ -14,7 +14,7 @@ import { EmptyState, Spinner } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import type { Finding, Submission } from "@/data/types";
 import { applySuggestions, mergeDecisions, runChecks } from "@/lib/checker";
-import { useActivity, useBrand, useFacts, useStamps, useSubmissions } from "@/lib/data";
+import { useActivity, useBrand, useFacts, useReviewVotes, useStamps, useSubmissions } from "@/lib/data";
 import { useSession } from "@/lib/session";
 import { cn, formatDate, uid } from "@/lib/utils";
 
@@ -59,6 +59,9 @@ export function ReviewDetail() {
   const [, setStamps] = useStamps();
   const [, setActivity] = useActivity();
   const [session] = useSession();
+  const [votes,setVotes] = useReviewVotes();
+  const [overrideFor,setOverrideFor] = useState<Finding|null>(null);
+  const [overrideReason,setOverrideReason] = useState("");
   const [sourceFor, setSourceFor] = useState<Finding | null>(null);
   const [editing, setEditing] = useState<Finding | null>(null);
   const [editText, setEditText] = useState("");
@@ -83,6 +86,15 @@ export function ReviewDetail() {
   }
   function setFinding(fid: string, patch: Partial<Finding>, what: string) {
     save({ findings: sub!.findings.map((f) => (f.id === fid ? { ...f, ...patch } : f)) }, what);
+  }
+
+  function recordVote(f: Finding, verdict: "upheld"|"overridden", reason: string) {
+    if (!isReviewer || !sub || !editable) return;
+    const when = new Date().toISOString();
+    const vote = { id: uid("RV"), submissionId: sub.id, findingId: f.id, ruleId: f.factId ?? f.category, ruleName: f.factId ? `${f.category} · ${f.factId}` : f.category, verdict, reason, who, when };
+    setVotes(previous => [...previous.filter(v=>!(v.submissionId === sub.id && v.findingId === f.id)),vote]);
+    save({}, `${verdict === "upheld" ? "Upheld rule" : "Overrode rule"} for finding ${f.id}${reason ? `: ${reason}` : ""}`);
+    toast(verdict === "upheld" ? "Rule upheld and recorded" : "Reviewer override recorded");
   }
 
   function runCheck() {
@@ -173,6 +185,14 @@ export function ReviewDetail() {
                       <p className="mt-1 text-sm"><span className="rounded bg-red-50 px-1 text-bad-700 line-through">{f.claim}</span>{" "}<span className="rounded bg-green-50 px-1 text-ok-700">{f.decision === "edited" ? f.editedText : f.suggestion || "(remove)"}</span></p>
                     </div>
                   )}
+                  {!verified && editable && isReviewer && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                      <span className="text-xs font-semibold text-ink-600">Reviewer judgement (separate from suggested wording):</span>
+                      <Button size="sm" variant="secondary" onClick={()=>recordVote(f,"upheld","")}>Rule valid</Button>
+                      <Button size="sm" variant="secondary" onClick={()=>{setOverrideFor(f);setOverrideReason("");}}>Override rule</Button>
+                      {votes.some(v=>v.submissionId===sub.id && v.findingId===f.id) && <span className="text-xs text-ok-700">Recorded: {votes.find(v=>v.submissionId===sub.id && v.findingId===f.id)?.verdict}</span>}
+                    </div>
+                  )}
                   {!verified && editable && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button size="sm" variant={f.decision === "accepted" ? "primary" : "secondary"} onClick={() => setFinding(f.id, { decision: "accepted" }, `Accepted suggestion for “${f.claim}”`)}><Check className="h-3.5 w-3.5" />Accept</Button>
@@ -210,6 +230,10 @@ export function ReviewDetail() {
           </ol>
         )}
       </Card>
+
+      <Modal open={!!overrideFor} onClose={()=>setOverrideFor(null)} title="Override guideline or rule" footer={<><Button variant="secondary" onClick={()=>setOverrideFor(null)}>Cancel</Button><Button disabled={overrideReason.trim().length<5} onClick={()=>{if(overrideFor) recordVote(overrideFor,"overridden",overrideReason.trim());setOverrideFor(null);}}>Save override</Button></>}>
+        <Textarea label="Why is this rule incorrect or unclear for this finding?" value={overrideReason} maxLength={500} onChange={e=>setOverrideReason(e.target.value)} hint="Required for a useful clarity insight (minimum 5 characters)." />
+      </Modal>
 
       <Modal open={!!sourceFor} onClose={() => setSourceFor(null)} title="Source evidence" wide footer={<Button variant="secondary" onClick={() => setSourceFor(null)}>Close</Button>}>
         {sourceFor && (() => {
