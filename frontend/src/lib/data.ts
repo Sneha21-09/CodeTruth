@@ -4,6 +4,7 @@ import { seedSubmissions } from "@/data/submissions";
 import { seedActivity, seedAssets, seedBrand, seedSourceChanges, seedSources, seedStamps, seedTeam } from "@/data/misc";
 import type { Activity, Asset, Brand, Fact, Source, SourceChange, Stamp, Submission, TeamUser } from "@/data/types";
 import { useLocalStorage } from "./useLocalStorage";
+import type { ReviewVote } from "./reviewerInsights";
 
 // Every collection persists in localStorage under a versioned key so schema changes never load stale shapes.
 const k = (name: string) => `ct.v1.${name}`;
@@ -26,3 +27,5 @@ export const STATUS_LABEL: Record<string, string> = {
   draft: "Draft", pending: "Pending review", changes: "Changes requested", approved: "Approved", rejected: "Rejected",
   candidate: "Candidate", expired: "Expired",
 };
+
+export const useReviewVotes = () => useLocalStorage<ReviewVote[]>(k("reviewer-votes"), []);
