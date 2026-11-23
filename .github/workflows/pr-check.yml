@@ -52,4 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr comment "$PR_NUMBER" --body-file codetruth-report.txt
+         if ! gh pr comment "$PR_NUMBER" --body-file codetruth-report.txt; then
+           echo "PR comment unavailable (fork permissions). Report saved in job summary."
+           cat codetruth-report.txt >> "$GITHUB_STEP_SUMMARY"
+           fi
