@@ -1,0 +1,7 @@
+{
+  "starter": {
+    "monthly_credits": 20,
+    "max_upload_mb": 250
+  },
+  "supported_file_formats": 12
+}
