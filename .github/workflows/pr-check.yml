@@ -42,8 +42,11 @@ jobs:
       - name: Run CodeTruth impact detection
         run: npx tsx src/lib/impact.test.ts
 
-      - name: Generate CodeTruth PR comment
-        run: npx tsx src/lib/prComment.test.ts > ../codetruth-report.txt
+      - name: Generate real CodeTruth PR impact report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/pr-impact.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --output ../codetruth-report.txt
 
       - name: Post CodeTruth report to PR
         if: github.event_name == 'pull_request'
